@@ -3,11 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Home, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-export interface Flashcard {
-  word: string;
-  imageUrl: string;
-}
+import type { Flashcard } from "@shared/schema";
 
 interface FlashcardDisplayProps {
   flashcards: Flashcard[];

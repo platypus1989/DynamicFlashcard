@@ -4,7 +4,8 @@ import { Sparkles, BookOpen } from "lucide-react";
 import WordInputCard from "@/components/WordInputCard";
 import CurriculumCard from "@/components/CurriculumCard";
 import LoadingFlashcards from "@/components/LoadingFlashcards";
-import FlashcardDisplay, { type Flashcard } from "@/components/FlashcardDisplay";
+import FlashcardDisplay from "@/components/FlashcardDisplay";
+import type { Flashcard } from "@shared/schema";
 
 interface Curriculum {
   id: string;
@@ -21,34 +22,39 @@ export default function Home() {
 
   const handleGenerateFlashcards = async (words: string[], curriculumName: string) => {
     setIsGenerating(true);
+    setCurrentGeneratingWord(words[0]);
 
-    // Simulate API calls with delays
-    const flashcards: Flashcard[] = [];
-    
-    for (const word of words) {
-      setCurrentGeneratingWord(word);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Use Unsplash for real images
-      flashcards.push({
-        word,
-        imageUrl: `https://source.unsplash.com/800x600/?${encodeURIComponent(word)}`
+    try {
+      const response = await fetch("/api/flashcards/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ words, curriculumName }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate flashcards");
+      }
+
+      const data = await response.json();
+
+      const newCurriculum: Curriculum = {
+        id: Date.now().toString(),
+        name: curriculumName,
+        flashcards: data.flashcards,
+        createdAt: new Date()
+      };
+
+      setCurricula([newCurriculum, ...curricula]);
+      setActiveCurriculum(newCurriculum);
+    } catch (error) {
+      console.error("Error generating flashcards:", error);
+      alert("Failed to generate flashcards. Please try again.");
+    } finally {
+      setIsGenerating(false);
+      setCurrentGeneratingWord("");
     }
-
-    const newCurriculum: Curriculum = {
-      id: Date.now().toString(),
-      name: curriculumName,
-      flashcards,
-      createdAt: new Date()
-    };
-
-    setCurricula([newCurriculum, ...curricula]);
-    setIsGenerating(false);
-    setCurrentGeneratingWord("");
-    setActiveCurriculum(newCurriculum);
   };
 
   const handleDeleteCurriculum = (id: string) => {

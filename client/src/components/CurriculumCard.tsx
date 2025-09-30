@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Trash2 } from "lucide-react";
-import type { Flashcard } from "./FlashcardDisplay";
+import type { Flashcard } from "@shared/schema";
 
 interface CurriculumCardProps {
   curriculum: {

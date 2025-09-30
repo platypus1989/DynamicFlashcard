@@ -1,18 +1,17 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+export const generateFlashcardsSchema = z.object({
+  words: z.array(z.string().trim().min(1).max(64, "Word too long")).min(1).max(50, "Maximum 50 words per curriculum"),
+  curriculumName: z.string().trim().min(1).max(100, "Curriculum name too long"),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+export type GenerateFlashcardsRequest = z.infer<typeof generateFlashcardsSchema>;
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export interface Flashcard {
+  word: string;
+  imageUrl: string;
+}
+
+export interface GenerateFlashcardsResponse {
+  flashcards: Flashcard[];
+}
