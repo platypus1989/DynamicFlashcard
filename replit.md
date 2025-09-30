@@ -28,10 +28,18 @@ Preferred communication style: Simple, everyday language.
 - Component library based on shadcn/ui "new-york" style preset
 
 **Key Frontend Components:**
-- `FlashcardDisplay`: Full-screen flashcard viewer with keyboard navigation and progress tracking
-- `WordInputCard`: Administrative form for creating curricula with word input
-- `CurriculumCard`: Displays saved curricula with preview images
+- `FlashcardDisplay`: Full-screen flashcard viewer with keyboard navigation, swipe support, and progress tracking
+- `WordInputCard`: Administrative form for creating curricula with custom naming and word input
+- `CurriculumCard`: Displays saved curricula with preview images and metadata
 - `LoadingFlashcards`: Animated loading state during flashcard generation
+
+**Key Features:**
+- Multiple curricula support with custom names (e.g., "Week 1", "Animals", "Transportation")
+- Session-based curriculum storage (client-side)
+- Full-screen immersive flashcard experience
+- Keyboard navigation (arrow keys, spacebar) and touch/click controls
+- Progress tracking with visual completion celebration
+- Automatic word deduplication
 
 **Rationale:** React with TypeScript provides type safety and component reusability. Vite offers fast development builds. TanStack Query simplifies API state management and caching. The lightweight stack is appropriate for a focused educational tool.
 
@@ -44,10 +52,12 @@ Preferred communication style: Simple, everyday language.
 - **Development:** tsx for hot-reloading during development
 
 **API Design:**
-- RESTful API with a single primary endpoint: `POST /api/flashcards/generate`
-- Accepts curriculum name and word array, returns flashcard data with image URLs
-- Request validation using Zod schemas
-- In-memory caching of Unsplash images to reduce API calls
+- RESTful API with primary endpoint: `POST /api/flashcards/generate`
+- Accepts curriculum name (max 100 chars) and word array (1-50 words, 1-64 chars each)
+- Request validation using Zod schemas with automatic trimming and deduplication
+- Concurrency control: Fetches images in batches of 5 parallel requests
+- LRU caching with 500-item capacity to minimize Unsplash API calls
+- 5-second timeout on external API requests
 
 **Storage Strategy:**
 - Currently implements in-memory storage (`MemStorage` class) for user data
@@ -63,7 +73,10 @@ Preferred communication style: Simple, everyday language.
 - **Purpose:** Fetch relevant images for flashcard words
 - **Implementation:** Server-side integration in `server/unsplash.ts`
 - **Authentication:** Client-ID based (requires `UNSPLASH_ACCESS_KEY` environment variable)
-- **Features:** Image search with landscape orientation preference, in-memory caching to minimize API calls
+- **Caching:** LRU cache with 500-item capacity, case-insensitive key matching
+- **Performance:** 5-second timeout per request, batched processing with concurrency limit of 5
+- **Resilience:** Automatic fallback to placeholder images on API errors or missing key
+- **Features:** Landscape orientation preference for kid-friendly display
 - **Endpoint Used:** `/search/photos`
 
 **Database (Configured, Not Active):**
