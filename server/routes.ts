@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { generateFlashcardsSchema, type GenerateFlashcardsResponse } from "@shared/schema";
-import { searchUnsplashImage } from "./unsplash";
+import { generateFlashcardsSchema, type GenerateFlashcardsResponse } from "@shared/schema.js";
+import { searchUnsplashImage } from "./unsplash.js";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
