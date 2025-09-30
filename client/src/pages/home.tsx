@@ -19,7 +19,7 @@ export default function Home() {
   const [currentGeneratingWord, setCurrentGeneratingWord] = useState<string>("");
   const [activeCurriculum, setActiveCurriculum] = useState<Curriculum | null>(null);
 
-  const handleGenerateFlashcards = async (words: string[]) => {
+  const handleGenerateFlashcards = async (words: string[], curriculumName: string) => {
     setIsGenerating(true);
 
     // Simulate API calls with delays
@@ -40,7 +40,7 @@ export default function Home() {
 
     const newCurriculum: Curriculum = {
       id: Date.now().toString(),
-      name: words.slice(0, 3).join(", ") + (words.length > 3 ? "..." : ""),
+      name: curriculumName,
       flashcards,
       createdAt: new Date()
     };

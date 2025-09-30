@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Sparkles, X } from "lucide-react";
 
 interface WordInputCardProps {
-  onGenerateFlashcards: (words: string[]) => void;
+  onGenerateFlashcards: (words: string[], curriculumName: string) => void;
 }
 
 export default function WordInputCard({ onGenerateFlashcards }: WordInputCardProps) {
+  const [curriculumName, setCurriculumName] = useState("");
   const [inputText, setInputText] = useState("");
   const [words, setWords] = useState<string[]>([]);
 
@@ -34,8 +37,13 @@ export default function WordInputCard({ onGenerateFlashcards }: WordInputCardPro
 
   const handleGenerate = () => {
     if (words.length > 0) {
-      onGenerateFlashcards(words);
-      console.log("Generating flashcards for:", words);
+      const name = curriculumName.trim() || `Curriculum ${new Date().toLocaleDateString()}`;
+      onGenerateFlashcards(words, name);
+      console.log("Generating flashcards for:", words, "with name:", name);
+      
+      // Reset form
+      setCurriculumName("");
+      setWords([]);
     }
   };
 
@@ -49,13 +57,30 @@ export default function WordInputCard({ onGenerateFlashcards }: WordInputCardPro
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
-          <Textarea
-            data-testid="input-words"
-            placeholder="Enter words here, one per line&#10;Example:&#10;apple&#10;dog&#10;sun&#10;tree"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            className="min-h-32 text-base resize-none"
-          />
+          <div className="space-y-2">
+            <Label htmlFor="curriculum-name">Curriculum Name</Label>
+            <Input
+              id="curriculum-name"
+              data-testid="input-curriculum-name"
+              placeholder="e.g., Week 1, Animals, Transportation"
+              value={curriculumName}
+              onChange={(e) => setCurriculumName(e.target.value)}
+              className="text-base"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="words-input">Words</Label>
+            <Textarea
+              id="words-input"
+              data-testid="input-words"
+              placeholder="Enter words here, one per line&#10;Example:&#10;apple&#10;dog&#10;sun&#10;tree"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              className="min-h-32 text-base resize-none"
+            />
+          </div>
+          
           <Button
             data-testid="button-add-words"
             onClick={handleAddWords}
