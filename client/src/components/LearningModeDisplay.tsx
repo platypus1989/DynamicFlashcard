@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen, AlertCircle } from "lucide-react";
 import type { Curriculum, LearningModeSession } from "@shared/schema";
 
 interface LearningModeDisplayProps {
@@ -11,23 +11,64 @@ interface LearningModeDisplayProps {
   onExit: () => void;
 }
 
+// Helper function to check if flashcard has valid images
+function hasValidImages(flashcard: any): boolean {
+  const allImages = flashcard?.imageUrls || [flashcard?.imageUrl];
+  const validImages = allImages.filter((url: string) => 
+    url && 
+    url.trim() !== '' && 
+    !url.includes('via.placeholder.com')
+  );
+  return validImages.length > 0;
+}
+
 export default function LearningModeDisplay({ curriculum, onExit }: LearningModeDisplayProps) {
+  // Filter out flashcards without valid images
+  const validFlashcards = curriculum.flashcards.filter(hasValidImages);
+  
+  // If no valid flashcards, show error and exit
+  if (validFlashcards.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="p-8">
+            <AlertCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-2">No Images Available</h2>
+            <p className="text-muted-foreground mb-6">
+              This curriculum doesn't have any words with valid images yet.
+              Please regenerate the curriculum with valid images.
+            </p>
+            <Button onClick={onExit}>Back to Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   const [session, setSession] = useState<LearningModeSession>(() => ({
     currentWordIndex: 0,
     currentImageIndex: 0,
-    words: curriculum.flashcards.map(fc => fc.word),
+    words: validFlashcards.map(fc => fc.word),
     completedWords: new Set(),
   }));
 
-  const currentFlashcard = curriculum.flashcards[session.currentWordIndex];
-  const availableImages = currentFlashcard?.imageUrls || [currentFlashcard?.imageUrl];
+  const currentFlashcard = validFlashcards[session.currentWordIndex];
+  
+  // Get valid images (we know they exist because we filtered)
+  const allImages = currentFlashcard?.imageUrls || [currentFlashcard?.imageUrl];
+  const availableImages = allImages.filter(url => 
+    url && 
+    url.trim() !== '' && 
+    !url.includes('via.placeholder.com')
+  );
+  
   const currentImageUrl = availableImages[session.currentImageIndex];
   const maxImagesPerWord = 3;
   const imagesToShow = Math.min(maxImagesPerWord, availableImages.length);
 
   const isWordComplete = session.currentImageIndex >= imagesToShow - 1;
-  const isLastWord = session.currentWordIndex >= curriculum.flashcards.length - 1;
-  const totalProgress = (session.completedWords.size / curriculum.flashcards.length) * 100;
+  const isLastWord = session.currentWordIndex >= validFlashcards.length - 1;
+  const totalProgress = (session.completedWords.size / validFlashcards.length) * 100;
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -88,8 +129,13 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
       }));
     } else if (session.currentWordIndex > 0) {
       // Move to previous word
-      const prevFlashcard = curriculum.flashcards[session.currentWordIndex - 1];
-      const prevAvailableImages = prevFlashcard?.imageUrls || [prevFlashcard?.imageUrl];
+      const prevFlashcard = validFlashcards[session.currentWordIndex - 1];
+      const prevAllImages = prevFlashcard?.imageUrls || [prevFlashcard?.imageUrl];
+      const prevAvailableImages = prevAllImages.filter(url => 
+        url && 
+        url.trim() !== '' && 
+        !url.includes('via.placeholder.com')
+      );
       const prevImagesToShow = Math.min(maxImagesPerWord, prevAvailableImages.length);
 
       setSession(prev => {
@@ -116,7 +162,7 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
   };
 
   // Show completion screen
-  if (session.completedWords.size === curriculum.flashcards.length) {
+  if (session.completedWords.size === validFlashcards.length) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md text-center">
@@ -124,7 +170,7 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="text-2xl font-bold mb-2">Congratulations!</h2>
             <p className="text-muted-foreground mb-6">
-              You've completed learning all {curriculum.flashcards.length} words in "{curriculum.name}"!
+              You've completed learning all {validFlashcards.length} words in "{curriculum.name}"!
             </p>
             <div className="space-y-3">
               <Button onClick={handleRestart} className="w-full">
@@ -158,7 +204,7 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
 
           <div className="flex items-center gap-4">
             <Badge variant="secondary">
-              {session.currentWordIndex + 1} of {curriculum.flashcards.length} words
+              {session.currentWordIndex + 1} of {validFlashcards.length} words
             </Badge>
             <div className="text-sm text-muted-foreground">
               Image {session.currentImageIndex + 1} of {imagesToShow}
@@ -172,7 +218,7 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
         <div className="container mx-auto">
           <Progress value={totalProgress} className="h-2" />
           <p className="text-xs text-muted-foreground mt-1 text-center">
-            {session.completedWords.size} of {curriculum.flashcards.length} words completed
+            {session.completedWords.size} of {validFlashcards.length} words completed
           </p>
         </div>
       </div>

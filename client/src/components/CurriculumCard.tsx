@@ -62,25 +62,38 @@ export default function CurriculumCard({ curriculum, onPlay, onEdit, onDelete }:
       <CardContent className="space-y-4">
         {/* Preview Images */}
         <div className="grid grid-cols-3 gap-2">
-          {previewCards.map((card, idx) => (
-            <div
-              key={idx}
-              data-testid={`preview-${curriculum.id}-${idx}`}
-              className="relative aspect-square rounded-md overflow-hidden bg-muted"
-            >
-              <img
-                src={card.imageUrl}
-                alt={card.word}
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
-                <p className="text-xs text-white font-semibold text-center">
-                  {card.word}
-                </p>
+          {previewCards.map((card, idx) => {
+            // Get first valid image or fallback to placeholder
+            const allImages = card.imageUrls || [card.imageUrl];
+            const validImages = allImages.filter(url => 
+              url && 
+              url.trim() !== '' && 
+              !url.includes('via.placeholder.com')
+            );
+            const previewImage = validImages.length > 0 
+              ? validImages[0]
+              : `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(card.word)}`;
+            
+            return (
+              <div
+                key={idx}
+                data-testid={`preview-${curriculum.id}-${idx}`}
+                className="relative aspect-square rounded-md overflow-hidden bg-muted"
+              >
+                <img
+                  src={previewImage}
+                  alt={card.word}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                  <p className="text-xs text-white font-semibold text-center">
+                    {card.word}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Actions */}

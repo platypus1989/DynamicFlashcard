@@ -133,7 +133,10 @@ export default function FlashcardDisplay({ flashcards, onExit }: FlashcardDispla
                 {/* Image Section - 60% */}
                 <div className="h-[60%] relative bg-muted overflow-hidden">
                   <motion.img
-                    src={currentCard.imageUrl}
+                    src={currentCard.imageUrl && !currentCard.imageUrl.includes('via.placeholder.com') 
+                      ? currentCard.imageUrl 
+                      : `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(currentCard.word)}`
+                    }
                     alt={currentCard.word}
                     className="w-full h-full object-cover"
                     initial={{ scale: 1 }}

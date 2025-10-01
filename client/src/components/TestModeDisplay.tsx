@@ -3,17 +3,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { X, Zap, RotateCcw, ArrowLeft, ArrowRight } from "lucide-react";
-import type { Curriculum } from "@shared/schema";
+import { X, Zap, RotateCcw, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
+import type { Curriculum, Flashcard } from "@shared/schema";
 
 interface TestModeDisplayProps {
   curriculum: Curriculum;
   onExit: () => void;
 }
 
-function getRandomWordAndImage(curriculum: Curriculum): { word: string; imageUrl: string } {
-  const randomFlashcard = curriculum.flashcards[Math.floor(Math.random() * curriculum.flashcards.length)];
-  const availableImages = randomFlashcard.imageUrls || [randomFlashcard.imageUrl];
+// Helper function to check if flashcard has valid images
+function hasValidImages(flashcard: Flashcard): boolean {
+  const allImages = flashcard?.imageUrls || [flashcard?.imageUrl];
+  const validImages = allImages.filter(url => 
+    url && 
+    url.trim() !== '' && 
+    !url.includes('via.placeholder.com')
+  );
+  return validImages.length > 0;
+}
+
+function getRandomWordAndImage(validFlashcards: Flashcard[]): { word: string; imageUrl: string } {
+  const randomFlashcard = validFlashcards[Math.floor(Math.random() * validFlashcards.length)];
+  
+  // Get valid images (we know they exist because we filtered)
+  const allImages = randomFlashcard.imageUrls || [randomFlashcard.imageUrl];
+  const availableImages = allImages.filter(url => 
+    url && 
+    url.trim() !== '' && 
+    !url.includes('via.placeholder.com')
+  );
+  
   const randomImageUrl = availableImages[Math.floor(Math.random() * availableImages.length)];
   
   return {
@@ -23,23 +42,49 @@ function getRandomWordAndImage(curriculum: Curriculum): { word: string; imageUrl
 }
 
 export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayProps) {
-  const [currentCard, setCurrentCard] = useState(() => getRandomWordAndImage(curriculum));
+  // Filter out flashcards without valid images
+  const validFlashcards = curriculum.flashcards.filter(hasValidImages);
+  
+  // If no valid flashcards, show error and exit
+  if (validFlashcards.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="p-8">
+            <AlertCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-2xl font-bold mb-2">No Images Available</h2>
+            <p className="text-muted-foreground mb-6">
+              This curriculum doesn't have any words with valid images yet.
+              Please regenerate the curriculum with valid images.
+            </p>
+            <Button onClick={onExit}>Back to Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  const [currentCard, setCurrentCard] = useState(() => getRandomWordAndImage(validFlashcards));
   const [cardsSeen, setCardsSeen] = useState(1);
+  const [isWordRevealed, setIsWordRevealed] = useState(false);
 
   const handleNext = () => {
-    setCurrentCard(getRandomWordAndImage(curriculum));
+    setCurrentCard(getRandomWordAndImage(validFlashcards));
     setCardsSeen(prev => prev + 1);
+    setIsWordRevealed(false);
   };
 
   const handlePrevious = () => {
     // In test mode, previous also generates a random card
-    setCurrentCard(getRandomWordAndImage(curriculum));
+    setCurrentCard(getRandomWordAndImage(validFlashcards));
     setCardsSeen(prev => prev + 1);
+    setIsWordRevealed(false);
   };
 
   const handleRestart = () => {
-    setCurrentCard(getRandomWordAndImage(curriculum));
+    setCurrentCard(getRandomWordAndImage(validFlashcards));
     setCardsSeen(1);
+    setIsWordRevealed(false);
   };
 
   useEffect(() => {
@@ -81,7 +126,7 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
               {cardsSeen} cards seen
             </Badge>
             <Badge variant="outline">
-              {curriculum.flashcards.length} words available
+              {validFlashcards.length} words available
             </Badge>
           </div>
         </div>
@@ -101,25 +146,26 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
                   loading="eager"
                 />
 
-                {/* Random indicator */}
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-orange-600 hover:bg-orange-700">
-                    Random
-                  </Badge>
-                </div>
               </div>
 
               {/* Word Display */}
               <div className="p-8 text-center bg-white">
-                <h1
-                  className="text-4xl md:text-6xl font-bold text-gray-800 mb-4"
-                  style={{ fontFamily: 'Quicksand, sans-serif' }}
-                >
-                  {currentCard.word}
-                </h1>
-                <p className="text-muted-foreground mt-2">
-                  Use arrow keys to see more random examples
-                </p>
+                {!isWordRevealed ? (
+                  <Button
+                    onClick={() => setIsWordRevealed(true)}
+                    size="lg"
+                    className="text-lg px-8 py-6"
+                  >
+                    Reveal Word
+                  </Button>
+                ) : (
+                  <h1
+                    className="text-4xl md:text-6xl font-bold text-gray-800 mb-4"
+                    style={{ fontFamily: 'Quicksand, sans-serif' }}
+                  >
+                    {currentCard.word}
+                  </h1>
+                )}
               </div>
             </CardContent>
           </Card>

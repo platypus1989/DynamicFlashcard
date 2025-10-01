@@ -75,11 +75,8 @@ function multiCacheSet(key: string, value: string[]): void {
   multiImageCache.set(key, value);
 }
 
-function generatePlaceholderImages(query: string, count: number): string[] {
-  return Array.from({ length: count }, (_, index) =>
-    `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}+${index + 1}`
-  );
-}
+// Note: Placeholder generation removed - we now skip words without images entirely
+// Placeholders should only be used in the frontend as a last-resort fallback for display
 
 /**
  * Search for multiple images for a word (up to 10)
@@ -98,11 +95,10 @@ export async function searchUnsplashImages(query: string, maxImages: number = 10
     clearCacheForWords([query]);
   }
 
-  // If no API key, return placeholder images
+  // If no API key, return empty array (no placeholders should be stored)
   if (!ACCESS_KEY) {
-    const fallbackUrls = generatePlaceholderImages(query, Math.min(maxImages, 3));
-    multiCacheSet(query.toLowerCase(), fallbackUrls);
-    return fallbackUrls;
+    console.warn(`No Unsplash API key - returning empty array for: ${query}`);
+    return [];
   }
 
   console.log(`Fetching ${maxImages} images from Unsplash for word: ${query}${forceRefresh ? ' (force refresh)' : ''}`);
@@ -132,18 +128,15 @@ export async function searchUnsplashImages(query: string, maxImages: number = 10
 
       return imageUrls;
     } else {
-      // Fallback to placeholder images if no images found
-      const fallbackUrls = generatePlaceholderImages(query, Math.min(maxImages, 3));
-      multiCacheSet(query.toLowerCase(), fallbackUrls);
-      return fallbackUrls;
+      // No images found - return empty array (don't store placeholders)
+      console.warn(`No images found for: ${query}`);
+      return [];
     }
   } catch (error) {
     console.error(`Error fetching images for "${query}":`, error);
 
-    // Return fallback on error
-    const fallbackUrls = generatePlaceholderImages(query, Math.min(maxImages, 3));
-    multiCacheSet(query.toLowerCase(), fallbackUrls);
-    return fallbackUrls;
+    // Return empty array on error (don't store placeholders)
+    return [];
   }
 }
 
@@ -167,13 +160,10 @@ export async function searchUnsplashImage(query: string): Promise<string> {
     // This ensures we get multiple images even for previously cached words
   }
 
-  // If no API key, return placeholder immediately
+  // If no API key, return placeholder URL (but don't cache it)
   if (!ACCESS_KEY) {
-    const fallbackUrl = `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
-    // Don't cache single images anymore - use multi-image cache
-    const fallbackUrls = generatePlaceholderImages(query, 3);
-    multiCacheSet(query.toLowerCase(), fallbackUrls);
-    return fallbackUrls[0];
+    console.warn(`No Unsplash API key - returning placeholder for: ${query}`);
+    return `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
   }
 
   console.log(`Fetching multiple images from Unsplash for word: ${query} (upgrading single-image cache)`);
@@ -181,14 +171,17 @@ export async function searchUnsplashImage(query: string): Promise<string> {
   try {
     // Fetch multiple images instead of just one
     const imageUrls = await searchUnsplashImages(query, 10);
-    return imageUrls[0]; // Return first image but ensure multiple are cached
+    if (imageUrls.length > 0) {
+      return imageUrls[0]; // Return first image but ensure multiple are cached
+    } else {
+      // No images found - return placeholder (but don't cache it)
+      return `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
+    }
   } catch (error) {
     console.error(`Error fetching image for "${query}":`, error);
 
-    // Return fallback on error
-    const fallbackUrls = generatePlaceholderImages(query, 3);
-    multiCacheSet(query.toLowerCase(), fallbackUrls);
-    return fallbackUrls[0];
+    // Return placeholder on error (but don't cache it)
+    return `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
   }
 }
 

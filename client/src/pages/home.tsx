@@ -10,10 +10,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Sparkles, BookOpen } from "lucide-react";
+import { Sparkles, BookOpen, Upload } from "lucide-react";
 import WordInputCard from "@/components/WordInputCard";
 import CurriculumCard from "@/components/CurriculumCard";
 import EditCurriculumDialog from "@/components/EditCurriculumDialog";
+import ImportCurriculaDialog from "@/components/ImportCurriculaDialog";
 import LoadingFlashcards from "@/components/LoadingFlashcards";
 import LearningModeDisplay from "@/components/LearningModeDisplay";
 import TestModeDisplay from "@/components/TestModeDisplay";
@@ -28,6 +29,7 @@ export default function Home() {
   const [selectedMode, setSelectedMode] = useState<LearningMode | null>(null);
   const [editingCurriculum, setEditingCurriculum] = useState<Curriculum | null>(null);
   const [curriculumToDelete, setCurriculumToDelete] = useState<Curriculum | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Load curricula from localStorage on component mount
   useEffect(() => {
@@ -155,6 +157,13 @@ export default function Home() {
     setSelectedMode(null);
   };
 
+  const handleImportComplete = (count: number) => {
+    // Reload curricula from storage
+    const loadedCurricula = CurriculumStorage.loadCurricula();
+    setCurricula(loadedCurricula);
+    console.log(`Successfully imported ${count} curricula`);
+  };
+
   // Show learning mode
   if (selectedCurriculum && selectedMode === "learning") {
     return (
@@ -194,22 +203,32 @@ export default function Home() {
         <header className="border-b">
           <div className="container mx-auto px-4 py-6">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Sparkles className="h-6 w-6 text-white" />
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <Sparkles className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h1
+                      className="text-2xl font-bold"
+                      style={{ fontFamily: 'Quicksand, sans-serif' }}
+                      data-testid="text-app-title"
+                    >
+                      Dynamic Flashcard
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                      Learning made fun and visual
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h1
-                    className="text-2xl font-bold"
-                    style={{ fontFamily: 'Quicksand, sans-serif' }}
-                    data-testid="text-app-title"
-                  >
-                    Dynamic Flashcard
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Learning made fun and visual
-                  </p>
-                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowImportDialog(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import Curricula
+                </Button>
               </div>
             </div>
           </div>
@@ -268,6 +287,13 @@ export default function Home() {
           </div>
         </main>
       </div>
+
+      {/* Import Curricula Dialog */}
+      <ImportCurriculaDialog
+        isOpen={showImportDialog}
+        onClose={() => setShowImportDialog(false)}
+        onImportComplete={handleImportComplete}
+      />
 
       {/* Edit Curriculum Dialog */}
       <EditCurriculumDialog
