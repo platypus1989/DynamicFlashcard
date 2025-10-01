@@ -24,9 +24,12 @@ interface UnsplashSearchResponse {
   total: number;
 }
 
-// Simple LRU cache with max size
+// Simple LRU cache with max size for single images (backward compatibility)
 const MAX_CACHE_SIZE = 500;
 const imageCache = new Map<string, string>();
+
+// LRU cache for multiple images
+const multiImageCache = new Map<string, string[]>();
 
 function cacheGet(key: string): string | undefined {
   const value = imageCache.get(key);
@@ -50,22 +53,59 @@ function cacheSet(key: string, value: string): void {
   imageCache.set(key, value);
 }
 
-export async function searchUnsplashImage(query: string): Promise<string> {
-  // Check cache first
-  const cached = cacheGet(query.toLowerCase());
-  if (cached) {
-    console.log(`Cache hit for word: ${query}`);
-    return cached;
+function multiCacheGet(key: string): string[] | undefined {
+  const value = multiImageCache.get(key);
+  if (value) {
+    // Move to end (LRU)
+    multiImageCache.delete(key);
+    multiImageCache.set(key, value);
+  }
+  return value;
+}
+
+function multiCacheSet(key: string, value: string[]): void {
+  // Remove oldest if at capacity
+  if (multiImageCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = multiImageCache.keys().next().value;
+    if (firstKey) {
+      multiImageCache.delete(firstKey);
+      console.log(`Multi-image cache evicted: ${firstKey} (size: ${multiImageCache.size})`);
+    }
+  }
+  multiImageCache.set(key, value);
+}
+
+function generatePlaceholderImages(query: string, count: number): string[] {
+  return Array.from({ length: count }, (_, index) =>
+    `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}+${index + 1}`
+  );
+}
+
+/**
+ * Search for multiple images for a word (up to 10)
+ */
+export async function searchUnsplashImages(query: string, maxImages: number = 10, forceRefresh: boolean = false): Promise<string[]> {
+  // Check cache first (unless force refresh is requested)
+  if (!forceRefresh) {
+    const cached = multiCacheGet(query.toLowerCase());
+    if (cached) {
+      console.log(`Multi-image cache hit for word: ${query} (${cached.length} images)`);
+      return cached.slice(0, maxImages);
+    }
+  } else {
+    console.log(`Force refresh requested for word: ${query} - bypassing cache`);
+    // Clear existing cache entries for this word
+    clearCacheForWords([query]);
   }
 
-  // If no API key, return placeholder immediately
+  // If no API key, return placeholder images
   if (!ACCESS_KEY) {
-    const fallbackUrl = `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
-    cacheSet(query.toLowerCase(), fallbackUrl);
-    return fallbackUrl;
+    const fallbackUrls = generatePlaceholderImages(query, Math.min(maxImages, 3));
+    multiCacheSet(query.toLowerCase(), fallbackUrls);
+    return fallbackUrls;
   }
 
-  console.log(`Fetching image from Unsplash for word: ${query}`);
+  console.log(`Fetching ${maxImages} images from Unsplash for word: ${query}${forceRefresh ? ' (force refresh)' : ''}`);
 
   try {
     const response = await axios.get<UnsplashSearchResponse>(
@@ -73,37 +113,82 @@ export async function searchUnsplashImage(query: string): Promise<string> {
       {
         params: {
           query,
-          per_page: 1,
+          per_page: maxImages,
           orientation: "landscape",
         },
         headers: {
           Authorization: `Client-ID ${ACCESS_KEY}`,
         },
-        timeout: 5000, // 5 second timeout
+        timeout: 10000, // 10 second timeout for multiple images
       }
     );
 
     if (response.data.results.length > 0) {
-      const imageUrl = response.data.results[0].urls.regular;
-      
-      // Cache the result
-      cacheSet(query.toLowerCase(), imageUrl);
-      console.log(`Cached image for word: ${query} (cache size: ${imageCache.size})`);
-      
-      return imageUrl;
+      const imageUrls = response.data.results.map(photo => photo.urls.regular);
+
+      // Cache the results
+      multiCacheSet(query.toLowerCase(), imageUrls);
+      console.log(`Cached ${imageUrls.length} images for word: ${query} (cache size: ${multiImageCache.size})`);
+
+      return imageUrls;
     } else {
-      // Fallback to a placeholder if no image found
-      const fallbackUrl = `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
-      cacheSet(query.toLowerCase(), fallbackUrl);
-      return fallbackUrl;
+      // Fallback to placeholder images if no images found
+      const fallbackUrls = generatePlaceholderImages(query, Math.min(maxImages, 3));
+      multiCacheSet(query.toLowerCase(), fallbackUrls);
+      return fallbackUrls;
     }
   } catch (error) {
-    console.error(`Error fetching image for "${query}":`, error);
-    
+    console.error(`Error fetching images for "${query}":`, error);
+
     // Return fallback on error
+    const fallbackUrls = generatePlaceholderImages(query, Math.min(maxImages, 3));
+    multiCacheSet(query.toLowerCase(), fallbackUrls);
+    return fallbackUrls;
+  }
+}
+
+/**
+ * Legacy function for single image (backward compatibility)
+ * Now prioritizes multi-image cache to ensure multiple images are available
+ */
+export async function searchUnsplashImage(query: string): Promise<string> {
+  // Try to get from multi-image cache FIRST
+  const multiCached = multiCacheGet(query.toLowerCase());
+  if (multiCached && multiCached.length > 0) {
+    console.log(`Using first image from multi-cache for word: ${query} (${multiCached.length} total images available)`);
+    return multiCached[0];
+  }
+
+  // Check single image cache as fallback (for very old cached items)
+  const cached = cacheGet(query.toLowerCase());
+  if (cached) {
+    console.log(`Single-image cache hit for word: ${query} - will upgrade to multi-image`);
+    // Don't return cached single image - instead fetch multiple images to upgrade the cache
+    // This ensures we get multiple images even for previously cached words
+  }
+
+  // If no API key, return placeholder immediately
+  if (!ACCESS_KEY) {
     const fallbackUrl = `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;
-    cacheSet(query.toLowerCase(), fallbackUrl);
-    return fallbackUrl;
+    // Don't cache single images anymore - use multi-image cache
+    const fallbackUrls = generatePlaceholderImages(query, 3);
+    multiCacheSet(query.toLowerCase(), fallbackUrls);
+    return fallbackUrls[0];
+  }
+
+  console.log(`Fetching multiple images from Unsplash for word: ${query} (upgrading single-image cache)`);
+
+  try {
+    // Fetch multiple images instead of just one
+    const imageUrls = await searchUnsplashImages(query, 10);
+    return imageUrls[0]; // Return first image but ensure multiple are cached
+  } catch (error) {
+    console.error(`Error fetching image for "${query}":`, error);
+
+    // Return fallback on error
+    const fallbackUrls = generatePlaceholderImages(query, 3);
+    multiCacheSet(query.toLowerCase(), fallbackUrls);
+    return fallbackUrls[0];
   }
 }
 
@@ -111,7 +196,40 @@ export function getCacheSize(): number {
   return imageCache.size;
 }
 
+export function getMultiCacheSize(): number {
+  return multiImageCache.size;
+}
+
 export function clearCache(): void {
   imageCache.clear();
-  console.log("Image cache cleared");
+  multiImageCache.clear();
+  console.log("Image caches cleared");
+}
+
+export function clearCacheForWords(words: string[]): string[] {
+  const clearedWords: string[] = [];
+
+  words.forEach(word => {
+    const lowerWord = word.toLowerCase();
+
+    // Clear from single image cache
+    if (imageCache.has(lowerWord)) {
+      imageCache.delete(lowerWord);
+      clearedWords.push(word);
+    }
+
+    // Clear from multi-image cache
+    if (multiImageCache.has(lowerWord)) {
+      multiImageCache.delete(lowerWord);
+      if (!clearedWords.includes(word)) {
+        clearedWords.push(word);
+      }
+    }
+  });
+
+  if (clearedWords.length > 0) {
+    console.log(`Cleared cache for words: ${clearedWords.join(', ')}`);
+  }
+
+  return clearedWords;
 }
