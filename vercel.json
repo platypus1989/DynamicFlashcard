@@ -1,16 +1,5 @@
 {
-  "version": 2,
   "buildCommand": "npm run build",
-  "functions": {
-    "api/**/*.js": {
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/server"
-    }
-  ]
+  "outputDirectory": "dist/public"
 }
 
