@@ -36,7 +36,8 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
+// Initialize the app
+export async function initializeApp() {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -54,10 +55,20 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Use PORT environment variable or default to 8000 for local development
-  const port = parseInt(process.env.PORT || '8000', 10);
+  return server;
+}
 
-  server.listen(port, () => {
-    log(`Server running at http://localhost:${port}`);
-  });
-})();
+// Export the app for Vercel
+export { app };
+
+// Start server only if this file is run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  (async () => {
+    const server = await initializeApp();
+    const port = parseInt(process.env.PORT || '8000', 10);
+
+    server.listen(port, () => {
+      log(`Server running at http://localhost:${port}`);
+    });
+  })();
+}
