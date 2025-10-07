@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen, AlertCircle, Volume2 } from "lucide-react";
+import { useSpeech } from "@/hooks/use-speech";
+import { AudioSettingsStorage } from "@/lib/audioSettings";
 import type { Curriculum, LearningModeSession } from "@shared/schema";
 
 interface LearningModeDisplayProps {
@@ -25,6 +27,15 @@ function hasValidImages(flashcard: any): boolean {
 export default function LearningModeDisplay({ curriculum, onExit }: LearningModeDisplayProps) {
   // Filter out flashcards without valid images
   const validFlashcards = curriculum.flashcards.filter(hasValidImages);
+  
+  // Load audio settings from global storage
+  const [audioSettings] = useState(() => AudioSettingsStorage.loadSettings());
+
+  const { speak, isSupported } = useSpeech({
+    lang: 'en-US',
+    volume: audioSettings.volume,
+    rate: audioSettings.rate,
+  });
   
   // If no valid flashcards, show error and exit
   if (validFlashcards.length === 0) {
@@ -69,6 +80,28 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
   const isWordComplete = session.currentImageIndex >= imagesToShow - 1;
   const isLastWord = session.currentWordIndex >= validFlashcards.length - 1;
   const totalProgress = (session.completedWords.size / validFlashcards.length) * 100;
+
+  // Auto-play when word changes
+  useEffect(() => {
+    if (audioSettings.autoPlay && isSupported && currentFlashcard) {
+      const timer = setTimeout(() => {
+        speak(currentFlashcard.word, { 
+          volume: audioSettings.volume, 
+          rate: audioSettings.rate 
+        });
+      }, 300); // Small delay for better UX
+      return () => clearTimeout(timer);
+    }
+  }, [session.currentWordIndex, audioSettings.autoPlay, audioSettings.volume, audioSettings.rate, isSupported, currentFlashcard, speak]);
+
+  const handlePlayWord = () => {
+    if (currentFlashcard) {
+      speak(currentFlashcard.word, { 
+        volume: audioSettings.volume, 
+        rate: audioSettings.rate 
+      });
+    }
+  };
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -256,15 +289,28 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
 
               {/* Word Display */}
               <div className="p-8 text-center bg-white">
-                <h1
-                  className="text-4xl md:text-6xl font-bold text-gray-800 mb-4"
-                  style={{ fontFamily: 'Quicksand, sans-serif' }}
-                >
-                  {currentFlashcard.word}
-                </h1>
+                <div className="flex items-center justify-center gap-4">
+                  <h1
+                    className="text-4xl md:text-6xl font-bold text-gray-800"
+                    style={{ fontFamily: 'Quicksand, sans-serif' }}
+                  >
+                    {currentFlashcard.word}
+                  </h1>
+                  {isSupported && (
+                    <Button
+                      onClick={handlePlayWord}
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-full h-12 w-12"
+                      title="Replay pronunciation"
+                    >
+                      <Volume2 className="h-6 w-6" />
+                    </Button>
+                  )}
+                </div>
 
                 {imagesToShow > 1 && (
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground mt-4">
                     {session.currentImageIndex < imagesToShow - 1
                       ? "See more examples →"
                       : isLastWord

@@ -10,11 +10,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Sparkles, BookOpen, Upload } from "lucide-react";
+import { Sparkles, BookOpen, Upload, Settings } from "lucide-react";
 import WordInputCard from "@/components/WordInputCard";
 import CurriculumCard from "@/components/CurriculumCard";
 import EditCurriculumDialog from "@/components/EditCurriculumDialog";
 import ImportCurriculaDialog from "@/components/ImportCurriculaDialog";
+import AudioSettingsDialog from "@/components/AudioSettingsDialog";
 import LoadingFlashcards from "@/components/LoadingFlashcards";
 import LearningModeDisplay from "@/components/LearningModeDisplay";
 import TestModeDisplay from "@/components/TestModeDisplay";
@@ -30,6 +31,7 @@ export default function Home() {
   const [editingCurriculum, setEditingCurriculum] = useState<Curriculum | null>(null);
   const [curriculumToDelete, setCurriculumToDelete] = useState<Curriculum | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
 
   // Load curricula from localStorage on component mount
   useEffect(() => {
@@ -221,14 +223,24 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowImportDialog(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Import Curricula
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowAudioSettings(true)}
+                    title="Audio Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowImportDialog(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Import Curricula
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -287,6 +299,12 @@ export default function Home() {
           </div>
         </main>
       </div>
+
+      {/* Audio Settings Dialog */}
+      <AudioSettingsDialog
+        isOpen={showAudioSettings}
+        onClose={() => setShowAudioSettings(false)}
+      />
 
       {/* Import Curricula Dialog */}
       <ImportCurriculaDialog

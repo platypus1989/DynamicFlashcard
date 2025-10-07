@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { X, Zap, RotateCcw, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
+import { useSpeech } from "@/hooks/use-speech";
+import { AudioSettingsStorage } from "@/lib/audioSettings";
 import type { Curriculum, Flashcard } from "@shared/schema";
 
 interface TestModeDisplayProps {
@@ -45,6 +46,15 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
   // Filter out flashcards without valid images
   const validFlashcards = curriculum.flashcards.filter(hasValidImages);
   
+  // Load audio settings from global storage
+  const [audioSettings] = useState(() => AudioSettingsStorage.loadSettings());
+
+  const { speak, isSupported } = useSpeech({
+    lang: 'en-US',
+    volume: audioSettings.volume,
+    rate: audioSettings.rate,
+  });
+  
   // If no valid flashcards, show error and exit
   if (validFlashcards.length === 0) {
     return (
@@ -67,6 +77,19 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
   const [currentCard, setCurrentCard] = useState(() => getRandomWordAndImage(validFlashcards));
   const [cardsSeen, setCardsSeen] = useState(1);
   const [isWordRevealed, setIsWordRevealed] = useState(false);
+
+  const handleRevealWord = () => {
+    setIsWordRevealed(true);
+    // Auto-play when revealing word
+    if (isSupported) {
+      setTimeout(() => {
+        speak(currentCard.word, {
+          volume: audioSettings.volume,
+          rate: audioSettings.rate,
+        });
+      }, 100); // Small delay for better UX
+    }
+  };
 
   const handleNext = () => {
     setCurrentCard(getRandomWordAndImage(validFlashcards));
@@ -91,7 +114,11 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") {
         e.preventDefault();
-        handleNext();
+        if (!isWordRevealed) {
+          handleRevealWord();
+        } else {
+          handleNext();
+        }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         handlePrevious();
@@ -104,7 +131,7 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, []);
+  }, [isWordRevealed]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex flex-col">
@@ -152,7 +179,7 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
               <div className="p-8 text-center bg-white">
                 {!isWordRevealed ? (
                   <Button
-                    onClick={() => setIsWordRevealed(true)}
+                    onClick={handleRevealWord}
                     size="lg"
                     className="text-lg px-8 py-6"
                   >
@@ -192,7 +219,7 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
             </Button>
           </div>
 
-          <Button onClick={handleNext}>
+          <Button onClick={handleNext} disabled={!isWordRevealed}>
             Next
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -201,7 +228,10 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
 
       {/* Instructions */}
       <div className="bg-muted/50 px-4 py-2 text-center text-xs text-muted-foreground">
-        Arrow keys or Space: Navigate • R: Restart • Escape or Exit button: Exit test mode
+        {!isWordRevealed 
+          ? "Space/Enter: Reveal word • Arrow keys: Navigate • R: Restart • Escape: Exit"
+          : "Space/Enter/Right arrow: Next • Left arrow: Previous • R: Restart • Escape: Exit"
+        }
       </div>
     </div>
   );

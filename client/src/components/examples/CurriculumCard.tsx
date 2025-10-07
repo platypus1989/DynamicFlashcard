@@ -5,6 +5,7 @@ export default function CurriculumCardExample() {
     id: "1",
     name: "Animals & Nature",
     createdAt: new Date(),
+    updatedAt: new Date(),
     flashcards: [
       {
         word: "dog",
@@ -26,6 +27,7 @@ export default function CurriculumCardExample() {
       <CurriculumCard
         curriculum={sampleCurriculum}
         onPlay={() => console.log("Play curriculum")}
+        onEdit={() => console.log("Edit curriculum")}
         onDelete={() => console.log("Delete curriculum")}
       />
     </div>
