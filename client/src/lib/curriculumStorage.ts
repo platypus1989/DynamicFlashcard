@@ -238,6 +238,74 @@ export class CurriculumStorage {
   }
 
   /**
+   * Permanently remove a specific image from a flashcard
+   * Once deleted, the image will never be selected again for that word.
+   * 
+   * @param curriculumId - Curriculum ID
+   * @param word - Word whose image should be removed
+   * @param imageIndex - Index of the image to remove
+   * @returns Updated curriculum or null if not found/invalid
+   */
+  static removeImageFromFlashcard(
+    curriculumId: string,
+    word: string,
+    imageIndex: number
+  ): Curriculum | null {
+    const curriculum = this.getCurriculum(curriculumId);
+    if (!curriculum) {
+      console.warn(`Curriculum with id ${curriculumId} not found`);
+      return null;
+    }
+
+    const flashcardIndex = curriculum.flashcards.findIndex(
+      fc => fc.word.toLowerCase() === word.toLowerCase()
+    );
+
+    if (flashcardIndex === -1) {
+      console.warn(`Flashcard with word "${word}" not found in curriculum`);
+      return null;
+    }
+
+    const flashcard = curriculum.flashcards[flashcardIndex];
+    const imageUrls = flashcard.imageUrls || [flashcard.imageUrl];
+    const photoAttributions = flashcard.photoAttributions || [];
+
+    if (imageIndex < 0 || imageIndex >= imageUrls.length) {
+      console.warn(`Invalid image index ${imageIndex} for word "${word}"`);
+      return null;
+    }
+
+    // Ensure at least one image will remain after deletion
+    if (imageUrls.length <= 1) {
+      console.warn(`Cannot remove the last image from word "${word}"`);
+      return null;
+    }
+
+    // Remove the image and its attribution permanently
+    const newImageUrls = [...imageUrls];
+    const newPhotoAttributions = [...photoAttributions];
+    
+    newImageUrls.splice(imageIndex, 1);
+    if (newPhotoAttributions[imageIndex]) {
+      newPhotoAttributions.splice(imageIndex, 1);
+    }
+
+    // Update the flashcard
+    const updatedFlashcard = {
+      ...flashcard,
+      imageUrl: newImageUrls[0], // Keep backward compatibility
+      imageUrls: newImageUrls,
+      photoAttributions: newPhotoAttributions,
+    };
+
+    const updatedFlashcards = [...curriculum.flashcards];
+    updatedFlashcards[flashcardIndex] = updatedFlashcard;
+
+    console.log(`Permanently deleted image ${imageIndex} for word "${word}". ${newImageUrls.length} images remaining.`);
+    return this.updateCurriculum(curriculumId, { flashcards: updatedFlashcards });
+  }
+
+  /**
    * Clear all server-side image cache
    */
   static async clearAllCache(): Promise<boolean> {

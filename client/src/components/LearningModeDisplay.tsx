@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen, AlertCircle, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen, AlertCircle, Volume2, Trash2 } from "lucide-react";
 import { useSpeech } from "@/hooks/use-speech";
 import { AudioSettingsStorage } from "@/lib/audioSettings";
+import { CurriculumStorage } from "@/lib/curriculumStorage";
 import PhotoAttribution from "@/components/PhotoAttribution";
 import type { Curriculum, LearningModeSession } from "@shared/schema";
 
@@ -26,8 +27,11 @@ function hasValidImages(flashcard: any): boolean {
 }
 
 export default function LearningModeDisplay({ curriculum, onExit }: LearningModeDisplayProps) {
+  // State for curriculum (allows updates when images are deleted)
+  const [currentCurriculum, setCurrentCurriculum] = useState(curriculum);
+  
   // Filter out flashcards without valid images
-  const validFlashcards = curriculum.flashcards.filter(hasValidImages);
+  const validFlashcards = currentCurriculum.flashcards.filter(hasValidImages);
   
   // Load audio settings from global storage
   const [audioSettings] = useState(() => AudioSettingsStorage.loadSettings());
@@ -198,9 +202,61 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
     setSession({
       currentWordIndex: 0,
       currentImageIndex: 0,
-      words: curriculum.flashcards.map(fc => fc.word),
+      words: currentCurriculum.flashcards.map(fc => fc.word),
       completedWords: new Set(),
     });
+  };
+
+  const handleDeleteImage = () => {
+    if (!currentFlashcard || !currentImageData) return;
+
+    // Get all valid images for this flashcard
+    const allImages = currentFlashcard.imageUrls || [currentFlashcard.imageUrl];
+    const validImages = allImages.filter(url =>
+      typeof url === 'string' &&
+      url.trim() !== '' &&
+      !url.includes('via.placeholder.com')
+    );
+
+    // Don't allow deleting the last image
+    if (validImages.length <= 1) {
+      console.warn("Cannot delete the last image");
+      return;
+    }
+
+    // Remove the image from the curriculum permanently (no replacement in storage)
+    // The remaining images will naturally fill the 3-image quota
+    const updatedCurriculum = CurriculumStorage.removeImageFromFlashcard(
+      currentCurriculum.id,
+      currentFlashcard.word,
+      currentImageData.index
+    );
+
+    if (updatedCurriculum) {
+      setCurrentCurriculum(updatedCurriculum);
+      
+      // After deletion, recalculate what images are available
+      const updatedFlashcard = updatedCurriculum.flashcards[session.currentWordIndex];
+      const updatedAllImages = updatedFlashcard?.imageUrls || [updatedFlashcard?.imageUrl];
+      const updatedValidImageData = updatedAllImages
+        .map((url, index) => ({ url, index }))
+        .filter(({ url }) =>
+          typeof url === 'string' &&
+          url.trim() !== '' &&
+          !url.includes('via.placeholder.com')
+        );
+      const updatedImagesToShow = Math.min(maxImagesPerWord, updatedValidImageData.length);
+
+      // If current index is now out of bounds, adjust it
+      if (session.currentImageIndex >= updatedImagesToShow) {
+        setSession(prev => ({
+          ...prev,
+          currentImageIndex: Math.max(0, updatedImagesToShow - 1),
+        }));
+      }
+      
+      console.log(`Deleted image permanently. ${updatedValidImageData.length} images remaining for word "${currentFlashcard.word}"`);
+    }
   };
 
   // Show completion screen
@@ -212,7 +268,7 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
             <div className="text-6xl mb-4">🎉</div>
             <h2 className="text-2xl font-bold mb-2">Congratulations!</h2>
             <p className="text-muted-foreground mb-6">
-              You've completed learning all {validFlashcards.length} words in "{curriculum.name}"!
+              You've completed learning all {validFlashcards.length} words in "{currentCurriculum.name}"!
             </p>
             <div className="space-y-3">
               <Button onClick={handleRestart} className="w-full">
@@ -279,6 +335,19 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
                   loading="eager"
                 />
                 <PhotoAttribution attribution={currentAttribution} />
+
+                {/* Delete Image Button */}
+                <div className="absolute top-4 right-4">
+                  <Button
+                    onClick={handleDeleteImage}
+                    size="icon"
+                    variant="destructive"
+                    className="h-10 w-10 rounded-full shadow-lg opacity-80 hover:opacity-100"
+                    title="Delete this image"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
 
                 {/* Image indicator dots */}
                 {imagesToShow > 1 && (

@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Zap, RotateCcw, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
+import { X, Zap, RotateCcw, ArrowLeft, ArrowRight, AlertCircle, Trash2 } from "lucide-react";
 import { useSpeech } from "@/hooks/use-speech";
 import { AudioSettingsStorage } from "@/lib/audioSettings";
+import { CurriculumStorage } from "@/lib/curriculumStorage";
 import PhotoAttribution from "@/components/PhotoAttribution";
 import type { Curriculum, Flashcard, PhotoAttribution as PhotoAttributionType } from "@shared/schema";
 
@@ -60,8 +61,11 @@ function getRandomWordAndImage(validFlashcards: Flashcard[]): { word: string; im
 }
 
 export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayProps) {
+  // State for curriculum (allows updates when images are deleted)
+  const [currentCurriculum, setCurrentCurriculum] = useState(curriculum);
+  
   // Filter out flashcards without valid images
-  const validFlashcards = curriculum.flashcards.filter(hasValidImages);
+  const validFlashcards = currentCurriculum.flashcards.filter(hasValidImages);
   
   // Load audio settings from global storage
   const [audioSettings] = useState(() => AudioSettingsStorage.loadSettings());
@@ -127,6 +131,47 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
     setIsWordRevealed(false);
   };
 
+  const handleDeleteImage = () => {
+    // Find the flashcard that has the current image
+    const flashcard = validFlashcards.find(fc => fc.word === currentCard.word);
+    if (!flashcard) return;
+
+    const allImages = flashcard.imageUrls || [flashcard.imageUrl];
+    const validImages = allImages.filter(url =>
+      typeof url === 'string' &&
+      url.trim() !== '' &&
+      !url.includes('via.placeholder.com')
+    );
+
+    // Don't allow deleting the last image
+    if (validImages.length <= 1) {
+      console.warn("Cannot delete the last image");
+      return;
+    }
+
+    // Find the index of the current image
+    const imageIndex = allImages.findIndex(url => url === currentCard.imageUrl);
+    if (imageIndex === -1) return;
+
+    // Remove the image from the curriculum
+    const updatedCurriculum = CurriculumStorage.removeImageFromFlashcard(
+      currentCurriculum.id,
+      currentCard.word,
+      imageIndex
+    );
+
+    if (updatedCurriculum) {
+      setCurrentCurriculum(updatedCurriculum);
+      
+      // Generate a new random card from the updated curriculum
+      const updatedValidFlashcards = updatedCurriculum.flashcards.filter(hasValidImages);
+      if (updatedValidFlashcards.length > 0) {
+        setCurrentCard(getRandomWordAndImage(updatedValidFlashcards));
+        setIsWordRevealed(false);
+      }
+    }
+  };
+
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") {
@@ -190,6 +235,19 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
                   loading="eager"
                 />
                 <PhotoAttribution attribution={currentCard.attribution} />
+
+                {/* Delete Image Button */}
+                <div className="absolute top-4 right-4">
+                  <Button
+                    onClick={handleDeleteImage}
+                    size="icon"
+                    variant="destructive"
+                    className="h-10 w-10 rounded-full shadow-lg opacity-80 hover:opacity-100"
+                    title="Delete this image"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Word Display */}
