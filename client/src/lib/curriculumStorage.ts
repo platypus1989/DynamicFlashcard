@@ -1,4 +1,5 @@
 import type { Curriculum, Flashcard } from "@shared/schema";
+import { findNewWords } from "./wordUtils";
 
 const STORAGE_KEY = "dynamic-flashcard-curricula";
 
@@ -131,7 +132,15 @@ export class CurriculumStorage {
   }
 
   /**
-   * Add words to an existing curriculum (will fetch new images)
+   * Add words to an existing curriculum
+   * This method:
+   * 1. Deduplicates new words against existing ones
+   * 2. Queries Unsplash API to fetch images for truly new words
+   * 3. Stores the complete flashcards (words + images + attributions) in the curriculum
+   * 
+   * @param id - Curriculum ID
+   * @param newWords - Array of words to add
+   * @returns Updated curriculum or null if not found
    */
   static async addWordsToCurriculum(id: string, newWords: string[]): Promise<Curriculum | null> {
     const curriculum = this.getCurriculum(id);
@@ -140,19 +149,20 @@ export class CurriculumStorage {
       return null;
     }
 
-    // Get current words to avoid duplicates
-    const currentWords = curriculum.flashcards.map(fc => fc.word.toLowerCase());
-    const uniqueNewWords = newWords.filter(word =>
-      !currentWords.includes(word.toLowerCase())
-    );
+    // Step 1: Deduplicate new words against existing ones using centralized utility
+    const currentWords = curriculum.flashcards.map(fc => fc.word);
+    const uniqueNewWords = findNewWords(newWords, currentWords);
 
     if (uniqueNewWords.length === 0) {
       console.log("No new unique words to add");
       return curriculum;
     }
 
+    console.log(`Adding ${uniqueNewWords.length} new words to curriculum "${curriculum.name}"`);
+
     try {
-      // Fetch flashcards for new words
+      // Step 2: Query Unsplash API to fetch images for new words
+      // The API endpoint will handle fetching images and creating flashcards
       const response = await fetch("/api/flashcards/generate", {
         method: "POST",
         headers: {
@@ -181,7 +191,9 @@ export class CurriculumStorage {
       const data = await response.json();
       const newFlashcards: Flashcard[] = data.flashcards;
 
-      // Combine existing and new flashcards
+      console.log(`Successfully fetched images for ${newFlashcards.length} new words`);
+
+      // Step 3: Combine existing and new flashcards, then store in curriculum
       const updatedFlashcards = [...curriculum.flashcards, ...newFlashcards];
 
       return this.updateCurriculum(id, { flashcards: updatedFlashcards });

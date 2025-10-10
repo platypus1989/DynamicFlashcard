@@ -108,6 +108,18 @@ async function searchUnsplashImages(query: string, maxImages: number = 10): Prom
   }
 }
 
+/**
+ * API endpoint to generate flashcards for a list of words
+ * 
+ * This endpoint:
+ * 1. Validates and deduplicates the input words (case-insensitive)
+ * 2. Queries Unsplash API to fetch multiple images (up to 10) for each word
+ * 3. Returns flashcards with images, URLs, and photographer attributions
+ * 
+ * Used by:
+ * - New curriculum creation (WordInputCard)
+ * - Adding words to existing curriculum (CurriculumStorage.addWordsToCurriculum)
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST
   if (req.method !== 'POST') {
@@ -117,7 +129,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { words, curriculumName } = generateFlashcardsSchema.parse(req.body);
 
-    // Deduplicate words (case-insensitive)
+    // Step 1: Deduplicate words (case-insensitive) to avoid fetching duplicate images
+    // Preserves the original casing of the first occurrence
     const uniqueWords = Array.from(
       new Set(words.map(w => w.toLowerCase()))
     ).map(w => words.find(original => original.toLowerCase() === w)!);
@@ -134,19 +147,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Fetch multiple images with limited concurrency
+    // Step 2: Fetch multiple images from Unsplash for each unique word
+    // Use limited concurrency to avoid overwhelming the API
     const CONCURRENCY_LIMIT = 3;
-    const flashcards = [];
+    const flashcards: Flashcard[] = [];
 
     for (let i = 0; i < uniqueWords.length; i += CONCURRENCY_LIMIT) {
       const batch = uniqueWords.slice(i, i + CONCURRENCY_LIMIT);
       const batchResults = await Promise.all(
         batch.map(async (word) => {
+          // Query Unsplash for up to 10 images per word
           const photoMetadata = await searchUnsplashImages(word, 10);
+          
+          // Step 3: Create flashcard with complete image data and attributions
           return {
             word,
-            imageUrl: photoMetadata[0]?.url || '',
-            imageUrls: photoMetadata.map(p => p.url),
+            imageUrl: photoMetadata[0]?.url || '', // Primary image (backward compatibility)
+            imageUrls: photoMetadata.map(p => p.url), // All image URLs
             photoAttributions: photoMetadata.map(p => ({
               photographerName: p.photographerName,
               photographerUsername: p.photographerUsername,
@@ -163,6 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       flashcards,
     };
 
+    console.log(`Successfully generated ${flashcards.length} flashcards with images`);
     return res.status(200).json(response);
   } catch (error) {
     console.error("Error generating flashcards:", error);

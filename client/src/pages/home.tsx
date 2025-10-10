@@ -20,6 +20,7 @@ import LoadingFlashcards from "@/components/LoadingFlashcards";
 import LearningModeDisplay from "@/components/LearningModeDisplay";
 import TestModeDisplay from "@/components/TestModeDisplay";
 import { CurriculumStorage } from "@/lib/curriculumStorage";
+import { findNewWords, findWordsToRemove } from "@/lib/wordUtils";
 import type { Curriculum, LearningMode } from "@shared/schema";
 
 export default function Home() {
@@ -115,19 +116,17 @@ export default function Home() {
         }
 
         const currentWords = curriculum.flashcards.map(fc => fc.word);
-        const newWords = updates.words.filter(word =>
-          !currentWords.some(cw => cw.toLowerCase() === word.toLowerCase())
-        );
-        const wordsToRemove = currentWords.filter(word =>
-          !updates.words!.some(w => w.toLowerCase() === word.toLowerCase())
-        );
+        
+        // Use utility functions for deduplication
+        const newWords = findNewWords(updates.words, currentWords);
+        const wordsToRemove = findWordsToRemove(currentWords, updates.words);
 
         // Remove words first
         if (wordsToRemove.length > 0) {
           updatedCurriculum = CurriculumStorage.removeWordsFromCurriculum(id, wordsToRemove);
         }
 
-        // Add new words
+        // Add new words (will fetch images from Unsplash for each new word)
         if (newWords.length > 0) {
           updatedCurriculum = await CurriculumStorage.addWordsToCurriculum(id, newWords);
         }

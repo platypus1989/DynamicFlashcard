@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Plus, Loader2 } from "lucide-react";
 import type { Curriculum } from "@shared/schema";
+import { parseWordInput, findNewWords, deduplicateWords } from "@/lib/wordUtils";
 
 interface EditCurriculumDialogProps {
   curriculum: Curriculum | null;
@@ -43,16 +44,12 @@ export default function EditCurriculumDialog({
   const handleAddWords = () => {
     if (!newWordsInput.trim()) return;
 
-    const newWords = newWordsInput
-      .split(/[,\\n]+/)
-      .map(word => word.trim())
-      .filter(word => word.length > 0)
-      .filter(word => !words.some(existingWord =>
-        existingWord.toLowerCase() === word.toLowerCase()
-      ));
+    // Parse the input and find truly new words
+    const parsedWords = parseWordInput(newWordsInput);
+    const uniqueNewWords = findNewWords(parsedWords, words);
 
-    if (newWords.length > 0) {
-      setWords([...words, ...newWords]);
+    if (uniqueNewWords.length > 0) {
+      setWords([...words, ...uniqueNewWords]);
       setNewWordsInput("");
     }
   };
