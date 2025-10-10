@@ -35,8 +35,16 @@ export default function Home() {
 
   // Load curricula from localStorage on component mount
   useEffect(() => {
-    const loadedCurricula = CurriculumStorage.loadCurricula();
-    setCurricula(loadedCurricula);
+    try {
+      const loadedCurricula = CurriculumStorage.loadCurricula();
+      setCurricula(loadedCurricula);
+      console.log('Loaded curricula:', loadedCurricula.length);
+    } catch (error) {
+      console.error('Error loading curricula:', error);
+      // Clear corrupted data and start fresh
+      localStorage.removeItem('curricula');
+      setCurricula([]);
+    }
   }, []);
 
   const handleGenerateFlashcards = async (words: string[], curriculumName: string) => {

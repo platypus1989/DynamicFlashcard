@@ -66,7 +66,7 @@ export default function CurriculumCard({ curriculum, onPlay, onEdit, onDelete }:
             // Get first valid image or fallback to placeholder
             const allImages = card.imageUrls || [card.imageUrl];
             const validImages = allImages.filter(url => 
-              url && 
+              typeof url === 'string' &&
               url.trim() !== '' && 
               !url.includes('via.placeholder.com')
             );

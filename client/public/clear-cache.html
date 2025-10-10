@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Cache - Dynamic Flashcard</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success {
+            background: #10b981;
+            padding: 10px;
+            border-radius: 4px;
+            color: white;
+            margin: 10px 0;
+            display: none;
+        }
+        .info {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Cache & Storage Manager</h1>
+        <p>Use this page to clear browser cache and localStorage if you're experiencing issues.</p>
+        
+        <div id="storageInfo" class="info"></div>
+        
+        <div>
+            <button onclick="clearLocalStorage()">Clear LocalStorage</button>
+            <button onclick="clearCacheAndReload()">Clear Cache & Reload</button>
+            <button onclick="showStorageData()">Show Stored Data</button>
+        </div>
+        
+        <div id="success" class="success"></div>
+        <div id="dataDisplay"></div>
+        
+        <hr style="margin: 20px 0;">
+        <a href="/" style="color: #3b82f6;">← Back to App</a>
+    </div>
+
+    <script>
+        function updateStorageInfo() {
+            const keys = Object.keys(localStorage);
+            const info = document.getElementById('storageInfo');
+            info.innerHTML = `<strong>LocalStorage Status:</strong><br>Keys stored: ${keys.length}<br>Keys: ${keys.join(', ') || 'None'}`;
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear();
+            showSuccess('✅ LocalStorage cleared successfully!');
+            updateStorageInfo();
+        }
+
+        function clearCacheAndReload() {
+            localStorage.clear();
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            showSuccess('✅ Cache and LocalStorage cleared! Reloading in 2 seconds...');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
+
+        function showStorageData() {
+            const data = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                try {
+                    data[key] = JSON.parse(localStorage.getItem(key));
+                } catch (e) {
+                    data[key] = localStorage.getItem(key);
+                }
+            }
+            
+            const display = document.getElementById('dataDisplay');
+            display.innerHTML = '<h3>Stored Data:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+
+        function showSuccess(message) {
+            const success = document.getElementById('success');
+            success.textContent = message;
+            success.style.display = 'block';
+            setTimeout(() => {
+                success.style.display = 'none';
+            }, 3000);
+        }
+
+        // Show storage info on load
+        updateStorageInfo();
+    </script>
+</body>
+</html>
+

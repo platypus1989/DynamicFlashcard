@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Home, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import PhotoAttribution from "@/components/PhotoAttribution";
 import type { Flashcard } from "@shared/schema";
 
 interface FlashcardDisplayProps {
@@ -17,6 +18,9 @@ export default function FlashcardDisplay({ flashcards, onExit }: FlashcardDispla
 
   const currentCard = flashcards[currentIndex];
   const progress = ((currentIndex + 1) / flashcards.length) * 100;
+  
+  // Get the attribution for the current image (using first image/first attribution)
+  const currentAttribution = currentCard?.photoAttributions?.[0] || null;
 
   const goToNext = () => {
     if (currentIndex < flashcards.length - 1) {
@@ -143,6 +147,7 @@ export default function FlashcardDisplay({ flashcards, onExit }: FlashcardDispla
                     animate={{ scale: 1.02 }}
                     transition={{ duration: 0.3 }}
                   />
+                  <PhotoAttribution attribution={currentAttribution} />
                 </div>
 
                 {/* Word Section - 40% */}

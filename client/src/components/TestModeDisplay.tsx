@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { X, Zap, RotateCcw, ArrowLeft, ArrowRight, AlertCircle } from "lucide-react";
 import { useSpeech } from "@/hooks/use-speech";
 import { AudioSettingsStorage } from "@/lib/audioSettings";
-import type { Curriculum, Flashcard } from "@shared/schema";
+import PhotoAttribution from "@/components/PhotoAttribution";
+import type { Curriculum, Flashcard, PhotoAttribution as PhotoAttributionType } from "@shared/schema";
 
 interface TestModeDisplayProps {
   curriculum: Curriculum;
@@ -16,29 +17,45 @@ interface TestModeDisplayProps {
 function hasValidImages(flashcard: Flashcard): boolean {
   const allImages = flashcard?.imageUrls || [flashcard?.imageUrl];
   const validImages = allImages.filter(url => 
-    url && 
+    typeof url === 'string' &&
     url.trim() !== '' && 
     !url.includes('via.placeholder.com')
   );
   return validImages.length > 0;
 }
 
-function getRandomWordAndImage(validFlashcards: Flashcard[]): { word: string; imageUrl: string } {
+function getRandomWordAndImage(validFlashcards: Flashcard[]): { word: string; imageUrl: string; attribution: PhotoAttributionType | null } {
   const randomFlashcard = validFlashcards[Math.floor(Math.random() * validFlashcards.length)];
   
-  // Get valid images (we know they exist because we filtered)
+  // Get valid images with their original indices
   const allImages = randomFlashcard.imageUrls || [randomFlashcard.imageUrl];
-  const availableImages = allImages.filter(url => 
-    url && 
-    url.trim() !== '' && 
-    !url.includes('via.placeholder.com')
-  );
+  const validImageData = allImages
+    .map((url, index) => ({ url, index }))
+    .filter(({ url }) => 
+      typeof url === 'string' &&
+      url.trim() !== '' && 
+      !url.includes('via.placeholder.com')
+    );
   
-  const randomImageUrl = availableImages[Math.floor(Math.random() * availableImages.length)];
+  // Safety check: if no valid images, return a fallback
+  if (validImageData.length === 0) {
+    return {
+      word: randomFlashcard.word,
+      imageUrl: randomFlashcard.imageUrl || '',
+      attribution: null,
+    };
+  }
+  
+  // Pick a random valid image
+  const randomEntry = validImageData[Math.floor(Math.random() * validImageData.length)];
+  
+  // Get the corresponding attribution using the original index
+  const attribution = randomFlashcard.photoAttributions?.[randomEntry.index] || null;
   
   return {
     word: randomFlashcard.word,
-    imageUrl: randomImageUrl,
+    imageUrl: randomEntry.url,
+    attribution,
   };
 }
 
@@ -172,7 +189,7 @@ export default function TestModeDisplay({ curriculum, onExit }: TestModeDisplayP
                   className="w-full h-full object-cover"
                   loading="eager"
                 />
-
+                <PhotoAttribution attribution={currentCard.attribution} />
               </div>
 
               {/* Word Display */}

@@ -1,5 +1,4 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { clearCacheForWords, getCacheSize, getMultiCacheSize } from '../../server/unsplash';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -13,13 +12,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Words must be an array" });
     }
 
-    const clearedWords = clearCacheForWords(words);
-
+    // Note: In-memory caching doesn't work in Vercel's serverless environment
+    // Each function invocation starts fresh, so there's no persistent cache to clear
     return res.status(200).json({
-      message: `Cleared cache for ${clearedWords.length} words`,
-      clearedWords,
-      remainingCacheSize: getCacheSize(),
-      remainingMultiCacheSize: getMultiCacheSize()
+      message: "Cache clearing is not supported in serverless environment",
+      clearedWords: [],
+      remainingCacheSize: 0,
+      remainingMultiCacheSize: 0,
+      info: "Vercel serverless functions don't maintain persistent in-memory state"
     });
   } catch (error) {
     console.error("Error clearing word cache:", error);

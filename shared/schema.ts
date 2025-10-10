@@ -7,10 +7,18 @@ export const generateFlashcardsSchema = z.object({
 
 export type GenerateFlashcardsRequest = z.infer<typeof generateFlashcardsSchema>;
 
+export interface PhotoAttribution {
+  photographerName: string;
+  photographerUsername: string;
+  photoId: string;
+  photoUrl: string;
+}
+
 export interface Flashcard {
   word: string;
   imageUrl: string; // Kept for backward compatibility
   imageUrls?: string[]; // New field for multiple images
+  photoAttributions?: PhotoAttribution[]; // Attribution data for each image
 }
 
 export interface GenerateFlashcardsResponse {

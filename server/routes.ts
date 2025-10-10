@@ -24,11 +24,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const batch = uniqueWords.slice(i, i + CONCURRENCY_LIMIT);
         const batchResults = await Promise.all(
           batch.map(async (word) => {
-            const imageUrls = await searchUnsplashImages(word, 10); // Fetch up to 10 images
+            const photoMetadata = await searchUnsplashImages(word, 10); // Fetch up to 10 images with metadata
             return {
               word,
-              imageUrl: imageUrls[0], // First image for backward compatibility
-              imageUrls: imageUrls, // All images for new functionality
+              imageUrl: photoMetadata[0]?.url || '', // First image URL for backward compatibility
+              imageUrls: photoMetadata.map(p => p.url), // Extract just the URLs
+              photoAttributions: photoMetadata.map(p => ({
+                photographerName: p.photographerName,
+                photographerUsername: p.photographerUsername,
+                photoId: p.photoId,
+                photoUrl: p.photoUrl,
+              })),
             };
           })
         );

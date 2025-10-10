@@ -17,6 +17,9 @@ interface UnsplashPhoto {
     name: string;
     username: string;
   };
+  links: {
+    html: string;
+  };
 }
 
 interface UnsplashSearchResponse {
@@ -24,12 +27,20 @@ interface UnsplashSearchResponse {
   total: number;
 }
 
+export interface PhotoMetadata {
+  url: string;
+  photographerName: string;
+  photographerUsername: string;
+  photoId: string;
+  photoUrl: string;
+}
+
 // Simple LRU cache with max size for single images (backward compatibility)
 const MAX_CACHE_SIZE = 500;
 const imageCache = new Map<string, string>();
 
-// LRU cache for multiple images
-const multiImageCache = new Map<string, string[]>();
+// LRU cache for multiple images with metadata
+const multiImageCache = new Map<string, PhotoMetadata[]>();
 
 function cacheGet(key: string): string | undefined {
   const value = imageCache.get(key);
@@ -53,7 +64,7 @@ function cacheSet(key: string, value: string): void {
   imageCache.set(key, value);
 }
 
-function multiCacheGet(key: string): string[] | undefined {
+function multiCacheGet(key: string): PhotoMetadata[] | undefined {
   const value = multiImageCache.get(key);
   if (value) {
     // Move to end (LRU)
@@ -63,7 +74,7 @@ function multiCacheGet(key: string): string[] | undefined {
   return value;
 }
 
-function multiCacheSet(key: string, value: string[]): void {
+function multiCacheSet(key: string, value: PhotoMetadata[]): void {
   // Remove oldest if at capacity
   if (multiImageCache.size >= MAX_CACHE_SIZE) {
     const firstKey = multiImageCache.keys().next().value;
@@ -79,9 +90,9 @@ function multiCacheSet(key: string, value: string[]): void {
 // Placeholders should only be used in the frontend as a last-resort fallback for display
 
 /**
- * Search for multiple images for a word (up to 10)
+ * Search for multiple images for a word (up to 10) with photographer attribution
  */
-export async function searchUnsplashImages(query: string, maxImages: number = 10, forceRefresh: boolean = false): Promise<string[]> {
+export async function searchUnsplashImages(query: string, maxImages: number = 10, forceRefresh: boolean = false): Promise<PhotoMetadata[]> {
   // Check cache first (unless force refresh is requested)
   if (!forceRefresh) {
     const cached = multiCacheGet(query.toLowerCase());
@@ -120,13 +131,19 @@ export async function searchUnsplashImages(query: string, maxImages: number = 10
     );
 
     if (response.data.results.length > 0) {
-      const imageUrls = response.data.results.map(photo => photo.urls.regular);
+      const photoMetadata: PhotoMetadata[] = response.data.results.map(photo => ({
+        url: photo.urls.regular,
+        photographerName: photo.user.name,
+        photographerUsername: photo.user.username,
+        photoId: photo.id,
+        photoUrl: photo.links.html,
+      }));
 
       // Cache the results
-      multiCacheSet(query.toLowerCase(), imageUrls);
-      console.log(`Cached ${imageUrls.length} images for word: ${query} (cache size: ${multiImageCache.size})`);
+      multiCacheSet(query.toLowerCase(), photoMetadata);
+      console.log(`Cached ${photoMetadata.length} images for word: ${query} (cache size: ${multiImageCache.size})`);
 
-      return imageUrls;
+      return photoMetadata;
     } else {
       // No images found - return empty array (don't store placeholders)
       console.warn(`No images found for: ${query}`);
@@ -149,7 +166,7 @@ export async function searchUnsplashImage(query: string): Promise<string> {
   const multiCached = multiCacheGet(query.toLowerCase());
   if (multiCached && multiCached.length > 0) {
     console.log(`Using first image from multi-cache for word: ${query} (${multiCached.length} total images available)`);
-    return multiCached[0];
+    return multiCached[0].url;
   }
 
   // Check single image cache as fallback (for very old cached items)
@@ -170,9 +187,9 @@ export async function searchUnsplashImage(query: string): Promise<string> {
 
   try {
     // Fetch multiple images instead of just one
-    const imageUrls = await searchUnsplashImages(query, 10);
-    if (imageUrls.length > 0) {
-      return imageUrls[0]; // Return first image but ensure multiple are cached
+    const photoMetadata = await searchUnsplashImages(query, 10);
+    if (photoMetadata.length > 0) {
+      return photoMetadata[0].url; // Return first image but ensure multiple are cached
     } else {
       // No images found - return placeholder (but don't cache it)
       return `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(query)}`;

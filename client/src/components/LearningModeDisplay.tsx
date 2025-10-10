@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, RotateCcw, X, BookOpen, AlertCircle, Volume2 } from "lucide-react";
 import { useSpeech } from "@/hooks/use-speech";
 import { AudioSettingsStorage } from "@/lib/audioSettings";
+import PhotoAttribution from "@/components/PhotoAttribution";
 import type { Curriculum, LearningModeSession } from "@shared/schema";
 
 interface LearningModeDisplayProps {
@@ -17,7 +18,7 @@ interface LearningModeDisplayProps {
 function hasValidImages(flashcard: any): boolean {
   const allImages = flashcard?.imageUrls || [flashcard?.imageUrl];
   const validImages = allImages.filter((url: string) => 
-    url && 
+    typeof url === 'string' &&
     url.trim() !== '' && 
     !url.includes('via.placeholder.com')
   );
@@ -65,17 +66,23 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
 
   const currentFlashcard = validFlashcards[session.currentWordIndex];
   
-  // Get valid images (we know they exist because we filtered)
+  // Get valid images with their original indices
   const allImages = currentFlashcard?.imageUrls || [currentFlashcard?.imageUrl];
-  const availableImages = allImages.filter(url => 
-    url && 
-    url.trim() !== '' && 
-    !url.includes('via.placeholder.com')
-  );
+  const validImageData = allImages
+    .map((url, index) => ({ url, index }))
+    .filter(({ url }) => 
+      typeof url === 'string' &&
+      url.trim() !== '' && 
+      !url.includes('via.placeholder.com')
+    );
   
-  const currentImageUrl = availableImages[session.currentImageIndex];
   const maxImagesPerWord = 3;
-  const imagesToShow = Math.min(maxImagesPerWord, availableImages.length);
+  const imagesToShow = Math.min(maxImagesPerWord, validImageData.length);
+  
+  // Get current image and its attribution using the mapped data
+  const currentImageData = validImageData[session.currentImageIndex];
+  const currentImageUrl = currentImageData?.url || currentFlashcard?.imageUrl || '';
+  const currentAttribution = (currentImageData && currentFlashcard?.photoAttributions?.[currentImageData.index]) || null;
 
   const isWordComplete = session.currentImageIndex >= imagesToShow - 1;
   const isLastWord = session.currentWordIndex >= validFlashcards.length - 1;
@@ -164,12 +171,14 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
       // Move to previous word
       const prevFlashcard = validFlashcards[session.currentWordIndex - 1];
       const prevAllImages = prevFlashcard?.imageUrls || [prevFlashcard?.imageUrl];
-      const prevAvailableImages = prevAllImages.filter(url => 
-        url && 
-        url.trim() !== '' && 
-        !url.includes('via.placeholder.com')
-      );
-      const prevImagesToShow = Math.min(maxImagesPerWord, prevAvailableImages.length);
+      const prevValidImageData = prevAllImages
+        .map((url, index) => ({ url, index }))
+        .filter(({ url }) => 
+          typeof url === 'string' &&
+          url.trim() !== '' && 
+          !url.includes('via.placeholder.com')
+        );
+      const prevImagesToShow = Math.min(maxImagesPerWord, prevValidImageData.length);
 
       setSession(prev => {
         const newCompletedWords = new Set(prev.completedWords);
@@ -269,6 +278,7 @@ export default function LearningModeDisplay({ curriculum, onExit }: LearningMode
                   className="w-full h-full object-cover"
                   loading="eager"
                 />
+                <PhotoAttribution attribution={currentAttribution} />
 
                 {/* Image indicator dots */}
                 {imagesToShow > 1 && (
