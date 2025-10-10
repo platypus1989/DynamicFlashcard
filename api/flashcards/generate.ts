@@ -124,6 +124,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`Generating flashcards for curriculum: ${curriculumName} with ${uniqueWords.length} words`);
 
+    // Check if API key is configured
+    if (!ACCESS_KEY) {
+      console.warn("⚠️  UNSPLASH_ACCESS_KEY not configured - returning flashcards without images");
+      return res.status(400).json({
+        error: "Unsplash API key not configured",
+        message: "Please set the UNSPLASH_ACCESS_KEY environment variable in your Vercel project settings. See VERCEL_DEPLOYMENT.md for instructions.",
+        details: "Go to Vercel Dashboard → Settings → Environment Variables and add UNSPLASH_ACCESS_KEY"
+      });
+    }
+
     // Fetch multiple images with limited concurrency
     const CONCURRENCY_LIMIT = 3;
     const flashcards = [];

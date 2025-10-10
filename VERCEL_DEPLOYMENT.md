@@ -47,6 +47,11 @@ Or trigger a redeploy from the Vercel dashboard by going to **Deployments** and 
 2. Try creating a new curriculum with some words
 3. The flashcards should generate successfully with images from Unsplash
 
+**If you get an error about "Unsplash API key not configured":**
+- This confirms the app is working but needs the environment variable
+- Follow the steps above to set `UNSPLASH_ACCESS_KEY`
+- Redeploy the app
+
 ## Troubleshooting
 
 ### Issue: "Failed to generate flashcards"

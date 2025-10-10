@@ -165,7 +165,17 @@ export class CurriculumStorage {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate flashcards for new words");
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Check if it's the API key error
+        if (errorData.error === "Unsplash API key not configured") {
+          throw new Error(
+            "Unsplash API key not configured. " +
+            "Please set UNSPLASH_ACCESS_KEY in Vercel environment variables."
+          );
+        }
+        
+        throw new Error(errorData.message || "Failed to generate flashcards for new words");
       }
 
       const data = await response.json();

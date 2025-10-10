@@ -136,18 +136,26 @@ export default function FlashcardDisplay({ flashcards, onExit }: FlashcardDispla
               >
                 {/* Image Section - 60% */}
                 <div className="h-[60%] relative bg-muted overflow-hidden">
-                  <motion.img
-                    src={currentCard.imageUrl && !currentCard.imageUrl.includes('via.placeholder.com') 
-                      ? currentCard.imageUrl 
-                      : `https://via.placeholder.com/800x600/3B82F6/FFFFFF?text=${encodeURIComponent(currentCard.word)}`
-                    }
-                    alt={currentCard.word}
-                    className="w-full h-full object-cover"
-                    initial={{ scale: 1 }}
-                    animate={{ scale: 1.02 }}
-                    transition={{ duration: 0.3 }}
-                  />
-                  <PhotoAttribution attribution={currentAttribution} />
+                  {currentCard.imageUrl && !currentCard.imageUrl.includes('via.placeholder.com') ? (
+                    <>
+                      <motion.img
+                        src={currentCard.imageUrl}
+                        alt={currentCard.word}
+                        className="w-full h-full object-cover"
+                        initial={{ scale: 1 }}
+                        animate={{ scale: 1.02 }}
+                        transition={{ duration: 0.3 }}
+                      />
+                      <PhotoAttribution attribution={currentAttribution} />
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+                      <div className="text-center p-8">
+                        <p className="text-6xl mb-4">🖼️</p>
+                        <p className="text-muted-foreground">No image available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Word Section - 40% */}

@@ -61,7 +61,23 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate flashcards");
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Check if it's the API key error
+        if (errorData.error === "Unsplash API key not configured") {
+          alert(
+            "⚠️ Unsplash API Key Not Configured\n\n" +
+            errorData.message + "\n\n" +
+            "Steps to fix:\n" +
+            "1. Go to https://unsplash.com/developers and create an app\n" +
+            "2. Copy your Access Key\n" +
+            "3. Add it to Vercel: Settings → Environment Variables → UNSPLASH_ACCESS_KEY\n" +
+            "4. Redeploy your app"
+          );
+        } else {
+          alert("Failed to generate flashcards. " + (errorData.message || "Please try again."));
+        }
+        return;
       }
 
       const data = await response.json();
