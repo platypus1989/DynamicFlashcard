@@ -148,6 +148,39 @@ export default function Home() {
     setCurriculumToDelete(curriculum);
   };
 
+  const handleExportCurriculum = (curriculum: Curriculum) => {
+    try {
+      const jsonData = CurriculumStorage.exportCurriculum(curriculum.id);
+      if (!jsonData) {
+        alert("Failed to export curriculum. Curriculum not found.");
+        return;
+      }
+
+      // Create a sanitized filename from the curriculum name
+      const sanitizedName = curriculum.name
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_-]/g, '');
+      const filename = `${sanitizedName}.json`;
+
+      // Create a blob and trigger download
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log(`Successfully exported curriculum "${curriculum.name}" as ${filename}`);
+    } catch (error) {
+      console.error("Error exporting curriculum:", error);
+      alert("Failed to export curriculum. Please try again.");
+    }
+  };
+
   const confirmDeleteCurriculum = async () => {
     if (!curriculumToDelete) return;
 
@@ -294,6 +327,7 @@ export default function Home() {
                       onPlay={(mode) => handlePlayCurriculum(curriculum, mode)}
                       onEdit={() => setEditingCurriculum(curriculum)}
                       onDelete={() => handleDeleteCurriculum(curriculum)}
+                      onExport={() => handleExportCurriculum(curriculum)}
                     />
                   ))}
                 </div>

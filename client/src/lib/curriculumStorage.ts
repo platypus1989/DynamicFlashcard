@@ -331,6 +331,31 @@ export class CurriculumStorage {
   }
 
   /**
+   * Export a single curriculum as JSON in the format compatible with curricula_data files
+   * This format excludes the 'id' field since it's local-specific.
+   * 
+   * @param id - Curriculum ID to export
+   * @returns JSON string of the curriculum or null if not found
+   */
+  static exportCurriculum(id: string): string | null {
+    const curriculum = this.getCurriculum(id);
+    if (!curriculum) {
+      console.warn(`Curriculum with id ${id} not found`);
+      return null;
+    }
+
+    // Export in the same format as curricula_data files (without the id field)
+    const exportData = {
+      name: curriculum.name,
+      flashcards: curriculum.flashcards,
+      createdAt: curriculum.createdAt,
+      updatedAt: curriculum.updatedAt,
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  }
+
+  /**
    * Export curricula as JSON (for backup)
    */
   static exportCurricula(): string {

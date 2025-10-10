@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, Download } from "lucide-react";
 import type { Curriculum, LearningMode } from "@shared/schema";
 
 interface CurriculumCardProps {
@@ -15,9 +15,10 @@ interface CurriculumCardProps {
   onPlay: (mode: LearningMode) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onExport: () => void;
 }
 
-export default function CurriculumCard({ curriculum, onPlay, onEdit, onDelete }: CurriculumCardProps) {
+export default function CurriculumCard({ curriculum, onPlay, onEdit, onDelete, onExport }: CurriculumCardProps) {
   const previewCards = curriculum.flashcards.slice(0, 3);
 
   return (
@@ -39,6 +40,10 @@ export default function CurriculumCard({ curriculum, onPlay, onEdit, onDelete }:
                 <DropdownMenuItem onClick={onEdit}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" />

@@ -29,6 +29,7 @@ export default function CurriculumCardExample() {
         onPlay={() => console.log("Play curriculum")}
         onEdit={() => console.log("Edit curriculum")}
         onDelete={() => console.log("Delete curriculum")}
+        onExport={() => console.log("Export curriculum")}
       />
     </div>
   );
